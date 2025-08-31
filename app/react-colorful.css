@@ -1,36 +1,65 @@
 /* app/react-colorful.css */
-.react-colorful {
-  display: grid;
-  gap: 12px;
-  width: 100%;
-  font-family: inherit;
-}
+/* Minimal, mobile-safe styles for the react-colorful pickers */
+.react-colorful { display: grid; gap: 12px; width: 100%; font-family: inherit; }
+.react-colorful * { box-sizing: border-box; }
+
+/* Saturation (square) */
 .react-colorful__saturation {
   position: relative;
   height: 180px;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+  touch-action: none;           /* critical for mobile dragging */
+  -ms-touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
 }
 .react-colorful__saturation-pointer {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 18px; height: 18px;
   border: 2px solid #fff;
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.1);
   transform: translate(-9px, -9px);
 }
+
+/* Hue (horizontal) */
 .react-colorful__hue {
   height: 14px;
   border-radius: 999px;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+  touch-action: none;           /* critical for mobile dragging */
+  -ms-touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: ew-resize;
+  /* graceful fallback gradient */
+  background: linear-gradient(
+    to right,
+    #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00
+  );
 }
 .react-colorful__hue-pointer {
-  width: 18px;
-  height: 18px;
+  width: 18px; height: 18px;
   border: 2px solid #fff;
   border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.1);
+  transform: translate(-9px, -2px);
+}
+
+/* Optional: alpha, if you add RGBA pickers later */
+.react-colorful__alpha {
+  height: 14px; border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+  touch-action: none; -ms-touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  cursor: ew-resize;
+}
+.react-colorful__alpha-pointer {
+  width: 18px; height: 18px;
+  border: 2px solid #fff; border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.1);
   transform: translate(-9px, -2px);
 }
