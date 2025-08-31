@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo } from "react";
 
 // Helper functions for color manipulation
@@ -10,9 +12,7 @@ function hexToRgb(hex) {
   return { r, g, b };
 }
 function rgbToHex(r, g, b) {
-  return (
-    "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")
-  ).toUpperCase();
+  return ("#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")).toUpperCase();
 }
 function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255;
@@ -54,11 +54,14 @@ function hslToRgb(h, s, l) {
   }
   return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
 }
-function clamp01(x){ return Math.max(0, Math.min(1, x)); }
 function adjust(hex, { dl = 0, ds = 0 }) {
   const { r, g, b } = hexToRgb(hex);
   const { h, s, l } = rgbToHsl(r, g, b);
-  const { r: rr, g: rg, b: rb } = hslToRgb(h, Math.max(0, Math.min(100, s + ds)), Math.max(0, Math.min(100, l + dl)));
+  const { r: rr, g: rg, b: rb } = hslToRgb(
+    h,
+    Math.max(0, Math.min(100, s + ds)),
+    Math.max(0, Math.min(100, l + dl))
+  );
   return rgbToHex(rr, rg, rb);
 }
 
@@ -78,9 +81,9 @@ export default function BlossmPurpleShowcaseInteractive() {
 
   // Derived shades for gradients & buttons
   const shades = useMemo(() => ({
-    primary600: adjust(primary, { dl: -8, ds: 0 }),
-    primary700: adjust(primary, { dl: -16, ds: 0 }),
-    primary300: adjust(primary, { dl: +8, ds: 0 }),
+    primary600: adjust(primary, { dl: -8 }),
+    primary700: adjust(primary, { dl: -16 }),
+    primary300: adjust(primary, { dl: +8 }),
     accent300: adjust(accent, { dl: +12 }),
     accent700: adjust(accent, { dl: -12 }),
   }), [primary, accent]);
@@ -138,7 +141,11 @@ export default function BlossmPurpleShowcaseInteractive() {
             <div className="text-sm mb-2 text-black/70">Presets</div>
             <div className="flex flex-wrap gap-2">
               {presets.map((p) => (
-                <button key={p.name} onClick={()=>{ setPrimary(p.primary); setAccent(p.accent); }} className="flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 hover:bg-black/5">
+                <button
+                  key={p.name}
+                  onClick={()=>{ setPrimary(p.primary); setAccent(p.accent); }}
+                  className="flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 hover:bg-black/5"
+                >
                   <span className="w-4 h-4 rounded" style={{ backgroundColor: p.primary }} />
                   <span className="w-4 h-4 rounded" style={{ backgroundColor: p.accent }} />
                   <span className="text-xs">{p.name}</span>
@@ -152,8 +159,15 @@ export default function BlossmPurpleShowcaseInteractive() {
         <section className="rounded-2xl border border-black/5 bg-white p-5">
           <h2 className="text-lg font-medium mb-4">Live Palette</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {[{name:"Primary",hex:primary},{name:"Primary 600",hex:shades.primary600},{name:"Primary 700",hex:shades.primary700},{name:"Accent",hex:accent},{name:"Accent 300",hex:shades.accent300},{name:"Deep",hex:deep}].map((c)=> (
-              <div key={c.hex} className="rounded-xl overflow-hidden border border-black/5">
+            {[
+              {name:"Primary",hex:primary},
+              {name:"Primary 600",hex:shades.primary600},
+              {name:"Primary 700",hex:shades.primary700},
+              {name:"Accent",hex:accent},
+              {name:"Accent 300",hex:shades.accent300},
+              {name:"Deep",hex:deep}
+            ].map((c)=> (
+              <div key={c.name} className="rounded-xl overflow-hidden border border-black/5">
                 <div className="h-16" style={{ backgroundColor: c.hex }} />
                 <div className="p-3 text-xs">
                   <div className="font-medium">{c.name}</div>
@@ -183,21 +197,6 @@ export default function BlossmPurpleShowcaseInteractive() {
                 <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border border-white/25 hover:bg-white/10">Learn more</a>
               </div>
             </div>
-
-            {/* Product pedestal */}
-            <div className="mt-10 md:mt-0 md:absolute md:right-10 md:top-28">
-              <div className="relative w-72 h-72 md:w-96 md:h-96">
-                <div className="absolute inset-0 rounded-3xl" style={{ background: "linear-gradient(180deg, var(--primary) 0%, var(--deep) 100%)" }} />
-                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-64 h-6 rounded-full bg-black/40 blur-md" />
-                <div className="absolute inset-8 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center">
-                  <div className="grid place-items-center gap-2">
-                    <div className="w-24 h-28 rounded-xl" style={{ background: "linear-gradient(180deg, var(--primary-600) 0%, var(--deep) 100%)" }} />
-                    <div className="w-28 h-8 rounded-t-xl" style={{ backgroundColor: "var(--deep)" }} />
-                    <div className="text-xs text-center text-white/80">Balance — 60 caps</div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -206,14 +205,19 @@ export default function BlossmPurpleShowcaseInteractive() {
           <div className="grid md:grid-cols-2 items-center gap-10">
             <div>
               <h2 className="text-3xl md:text-5xl font-serif" style={{ color: "var(--text)" }}>Daily support for the next chapter</h2>
-              <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence‑informed formulas made for real life. Clean label, third‑party tested.</p>
+              <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence-informed formulas made for real life. Clean label, third-party tested.</p>
               <div className="mt-8 flex gap-3">
                 <a href="#" className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Shop Now</a>
                 <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Take quiz</a>
               </div>
             </div>
             <div className="relative">
-              <div className="absolute -inset-6 rounded-3xl opacity-70" style={{ background: `radial-gradient(600px 300px at 60% 40%, #EFE7FA 0%, transparent 60%), radial-gradient(400px 280px at 20% 80%, var(--accent) 0%, transparent 60%)` }} />
+              <div
+                className="absolute -inset-6 rounded-3xl opacity-70"
+                style={{
+                  background: `radial-gradient(600px 300px at 60% 40%, #EFE7FA 0%, transparent 60%), radial-gradient(400px 280px at 20% 80%, var(--accent) 0%, transparent 60%)`
+                }}
+              />
               <div className="relative rounded-2xl border border-black/5 bg-white p-6 grid grid-cols-4 gap-4">
                 {[
                   { name: "Balance", color: "var(--primary)" },
@@ -240,9 +244,9 @@ export default function BlossmPurpleShowcaseInteractive() {
             </div>
             <div>
               <h3 className="text-2xl md:text-3xl font-serif">Blossm Balance</h3>
-              <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third‑party tested.</p>
+              <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third-party tested.</p>
               <ul className="mt-4 grid gap-2 text-sm">
-                <li>• Evidence‑informed doses</li>
+                <li>• Evidence-informed doses</li>
                 <li>• Clean label (no artificial colors)</li>
                 <li>• Gentle on daily use</li>
               </ul>
