@@ -25,7 +25,7 @@ function rgbToHsl(r, g, b) {
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
       case r: h = (g - b) / d + (g < b ? 6 : 1); break;
-      case g: h = (b - r) / d + 2; break;
+      case g: h = (b - r)) / d + 2; break;
       default: h = (r - g) / d + 4; break;
     }
     h /= 6;
@@ -122,7 +122,7 @@ export default function BlossmPurpleShowcaseInteractive() {
     "--text": text
   };
 
-  /* ---- Custom, drag-friendly color field ---- */
+  /* ---- Persistent, drag-friendly color field ---- */
   function ColorField({ id, label, value, onChange }) {
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState(value);
@@ -131,24 +131,20 @@ export default function BlossmPurpleShowcaseInteractive() {
 
     useEffect(() => { setDraft(value); }, [value]);
 
-    // Close ONLY on click/tap completely outside (capture phase, robust)
+    // Close ONLY on true outside click (capture), or Esc, or Done
     useEffect(() => {
       const handlePointerDown = (e) => {
         const pop = popRef.current;
         const anchor = anchorRef.current;
         if (!pop || !anchor) return;
         const t = e.target;
-        const clickedInsidePopover = pop.contains(t);
-        const clickedAnchor = anchor.contains(t);
-        if (!clickedInsidePopover && !clickedAnchor) {
-          setOpen(false);
-        }
+        const insidePop = pop.contains(t);
+        const onAnchor = anchor.contains(t);
+        if (!insidePop && !onAnchor) setOpen(false);
       };
-      document.addEventListener("pointerdown", handlePointerDown, true); // capture
+      document.addEventListener("pointerdown", handlePointerDown, true);
       return () => document.removeEventListener("pointerdown", handlePointerDown, true);
     }, []);
-
-    // Escape to close
     useEffect(() => {
       const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
       document.addEventListener("keydown", onKey);
@@ -165,8 +161,6 @@ export default function BlossmPurpleShowcaseInteractive() {
     return (
       <div className="relative flex items-center gap-3 text-sm">
         <label htmlFor={id} className="w-20 text-black/70">{label}</label>
-
-        {/* Swatch opens picker (no toggle close) */}
         <button
           ref={anchorRef}
           type="button"
@@ -175,41 +169,20 @@ export default function BlossmPurpleShowcaseInteractive() {
           className="w-10 h-10 rounded-md border border-black/10"
           style={{ backgroundColor: value }}
         />
-
-        {/* Hex input */}
         <input
           value={draft}
           onChange={(e)=>onHexInput(e.target.value)}
           className="flex-1 px-2 py-2 border rounded-md text-sm font-mono"
         />
-
-        {/* Popover with drag-friendly picker; stays open until outside click / Esc / Done */}
         {open && (
-          <div
-            ref={popRef}
-            className="absolute z-50 top-12 left-20 bg-white border border-black/10 rounded-xl shadow-xl p-3 w-[260px]"
-          >
+          <div ref={popRef} className="absolute z-50 top-12 left-20 bg-white border border-black/10 rounded-xl shadow-xl p-3 w-[260px]">
             <HexColorPicker
               color={draft}
-              onChange={(c) => {
-                const v = c.toUpperCase();
-                setDraft(v);
-                onChange(v); // live update while dragging
-              }}
+              onChange={(c) => { const v = c.toUpperCase(); setDraft(v); onChange(v); }}
             />
             <div className="mt-3 flex items-center gap-2">
-              <input
-                value={draft}
-                onChange={(e)=>onHexInput(e.target.value)}
-                className="flex-1 px-2 py-2 border rounded-md text-sm font-mono"
-              />
-              <button
-                type="button"
-                onClick={()=>setOpen(false)}
-                className="px-3 py-2 text-xs rounded-md border border-black/10 hover:bg-black/5"
-              >
-                Done
-              </button>
+              <input value={draft} onChange={(e)=>onHexInput(e.target.value)} className="flex-1 px-2 py-2 border rounded-md text-sm font-mono" />
+              <button type="button" onClick={()=>setOpen(false)} className="px-3 py-2 text-xs rounded-md border border-black/10 hover:bg-black/5">Done</button>
             </div>
           </div>
         )}
@@ -217,15 +190,11 @@ export default function BlossmPurpleShowcaseInteractive() {
     );
   }
 
-  const applyPreset = (p) => {
-    setPrimary(p.primary); setAccent(p.accent); setDeep(p.deep || "#3B164B");
-  };
+  const applyPreset = (p) => { setPrimary(p.primary); setAccent(p.accent); setDeep(p.deep || "#3B164B"); };
   const savePreset = () => {
     const name = presetName.trim();
     if (!name) return alert("Give your preset a name.");
-    if (!isValidHex(primary) || !isValidHex(accent) || !isValidHex(deep)) {
-      return alert("Please use valid HEX colors like #9B6BA3 or #ABC.");
-    }
+    if (!isValidHex(primary) || !isValidHex(accent) || !isValidHex(deep)) return alert("Please use valid HEX colors like #9B6BA3 or #ABC.");
     const next = { name, primary, accent, deep };
     setCustomPresets((prev) => {
       const filtered = prev.filter((x) => x.name.toLowerCase() !== name.toLowerCase());
@@ -237,193 +206,213 @@ export default function BlossmPurpleShowcaseInteractive() {
 
   return (
     <div className="min-h-screen w-full" style={{ backgroundColor: "var(--bg)", color: "var(--text)", ...cssVars }}>
-      {/* Top bar */}
-      <header className="sticky top-0 z-10 backdrop-blur bg-white/60 border-b border-black/5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between py-3 px-4">
-          <div className="font-serif text-2xl tracking-tight">
-            <span className="lowercase">blossm</span>
-            <span className="ml-2 text-xs tracking-widest text-black/60">NUTRITION</span>
-          </div>
-          <nav className="hidden md:flex gap-6 text-sm">
-            <a className="hover:opacity-70" href="#">Shop</a>
-            <a className="hover:opacity-70" href="#">About</a>
-            <a className="hover:opacity-70" href="#">Science</a>
-            <a className="hover:opacity-70" href="#">Journal</a>
-          </nav>
-          <button className="rounded-full px-4 py-2 text-white" style={{ backgroundColor: "var(--primary)" }}>Shop Now</button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 py-8 grid gap-8">
-        {/* Controls */}
-        <section className="rounded-2xl border border-black/5 bg-white p-5">
-          <h2 className="text-lg font-medium mb-3">Theme colors</h2>
-          <div className="grid md:grid-cols-2 gap-3">
-            <ColorField id="c-primary" label="Primary" value={primary} onChange={setPrimary} />
-            <ColorField id="c-accent"  label="Accent"  value={accent}  onChange={setAccent} />
-            <ColorField id="c-deep"    label="Deep"    value={deep}    onChange={setDeep} />
-          </div>
-
-          {/* Save current as preset */}
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <input
-              value={presetName}
-              onChange={(e)=>setPresetName(e.target.value)}
-              placeholder="Preset name (e.g. Dusty Lavender)"
-              className="min-w-[220px] px-3 py-2 border rounded-md text-sm"
-            />
-            <button onClick={savePreset} className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "var(--primary)" }}>
-              Save preset
-            </button>
-          </div>
-
-          {/* Presets list */}
-          <div className="mt-5">
-            <div className="text-sm mb-2 text-black/70">Presets</div>
-            <div className="flex flex-wrap gap-2">
-              {[...builtInPresets, ...customPresets].map((p) => (
-                <div key={p.name} className="flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 bg-white">
-                  <button onClick={()=>applyPreset(p)} className="flex items-center gap-2">
+      {/* Shell layout: left sidebar nav + main content */}
+      <div className="grid md:grid-cols-[220px_1fr] min-h-screen">
+        {/* Left sidebar */}
+        <aside className="hidden md:block border-r border-black/10 bg-white/70 backdrop-blur sticky top-0 h-screen">
+          <div className="p-6 space-y-6">
+            <div className="text-xs uppercase tracking-[0.2em] text-black/50">Menu</div>
+            <nav className="grid gap-2">
+              {[
+                { label: "Shop now", href: "#shop" },
+                { label: "Catalog", href: "#catalog" },
+                { label: "Contact us", href: "#contact" },
+                { label: "Journal", href: "#journal" }
+              ].map((item) => (
+                <a key={item.label} href={item.href} className="px-3 py-2 rounded-lg border border-black/10 hover:bg-black/5" style={{ color: "var(--primary)" }}>{item.label}</a>
+              ))}
+            </nav>
+            <div className="pt-6 border-t border-black/10">
+              <div className="text-xs uppercase tracking-[0.2em] text-black/50 mb-2">Presets</div>
+              <div className="flex flex-wrap gap-2">
+                {[...builtInPresets, ...customPresets].map((p) => (
+                  <button key={p.name} onClick={()=>applyPreset(p)} className="flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 hover:bg-black/5">
                     <span className="w-4 h-4 rounded" style={{ backgroundColor: p.primary }} />
                     <span className="w-4 h-4 rounded" style={{ backgroundColor: p.accent }} />
                     <span className="w-4 h-4 rounded" style={{ backgroundColor: p.deep || "#3B164B" }} />
                     <span className="text-xs">{p.name}</span>
                   </button>
-                  {customPresets.some(cp => cp.name === p.name) && (
-                    <button aria-label="Remove preset" onClick={()=>removePreset(p.name)} className="text-xs px-2 py-0.5 rounded hover:bg-black/5">✕</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Palette chips (live) */}
-        <section className="rounded-2xl border border-black/5 bg-white p-5">
-          <h2 className="text-lg font-medium mb-4">Live Palette</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {[
-              {name:"Primary",hex:primary},
-              {name:"Primary 600",hex:shades.primary600},
-              {name:"Primary 700",hex:shades.primary700},
-              {name:"Accent",hex:accent},
-              {name:"Accent 300",hex:shades.accent300},
-              {name:"Deep",hex:deep}
-            ].map((c)=> (
-              <div key={c.name} className="rounded-xl overflow-hidden border border-black/5">
-                <div className="h-16" style={{ backgroundColor: c.hex }} />
-                <div className="p-3 text-xs">
-                  <div className="font-medium">{c.name}</div>
-                  <div className="font-mono text-black/60">{c.hex}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Example A — Dark Hero */}
-        <section className="rounded-2xl overflow-hidden border border-black/5">
-          <div
-            className="p-10 md:p-16 text-white relative"
-            style={{
-              backgroundImage:
-                `radial-gradient(1200px 600px at 20% 0%, var(--accent) 0%, rgba(0,0,0,0) 40%), radial-gradient(900px 600px at 100% 50%, var(--primary) 0%, var(--deep) 70%)`,
-              backgroundColor: "var(--deep)"
-            }}
-          >
-            <div className="max-w-3xl">
-              <p className="uppercase tracking-[0.25em] text-white/70 text-xs mb-4">For women 30+</p>
-              <h1 className="text-4xl md:text-6xl leading-tight font-serif">Feel good in your own rhythm</h1>
-              <p className="mt-4 text-white/85 max-w-xl">Science-led daily nutrition that supports hormonal balance, sleep, skin, and mood.</p>
-              <div className="mt-8 flex gap-3">
-                <a href="#" className="rounded-full px-6 py-3 text-sm font-medium bg-white" style={{ color: "var(--deep)" }}>Shop Balance</a>
-                <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border border-white/25 hover:bg-white/10">Learn more</a>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Example B — Light Hero */}
-        <section className="rounded-2xl border border-black/5 bg-white p-10 md:p-14">
-          <div className="grid md:grid-cols-2 items-center gap-10">
-            <div>
-              <h2 className="text-3xl md:text-5xl font-serif" style={{ color: "var(--text)" }}>Daily support for the next chapter</h2>
-              <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence-informed formulas made for real life. Clean label, third-party tested.</p>
-              <div className="mt-8 flex gap-3">
-                <a href="#" className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Shop Now</a>
-                <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Take quiz</a>
-              </div>
-            </div>
-            <div className="relative">
-              <div className="absolute -inset-6 rounded-3xl opacity-70" style={{ background: `radial-gradient(600px 300px at 60% 40%, #EFE7FA 0%, transparent 60%), radial-gradient(400px 280px at 20% 80%, var(--accent) 0%, transparent 60%)` }} />
-              <div className="relative rounded-2xl border border-black/5 bg-white p-6 grid grid-cols-4 gap-4">
-                {[
-                  { name: "Balance", color: "var(--primary)" },
-                  { name: "Glow",    color: "var(--accent)" },
-                  { name: "Calm",    color: "var(--deep)" },
-                  { name: "Restore", color: "#8EA69C" }
-                ].map((card) => (
-                  <div key={card.name} className="rounded-xl border border-black/5 p-4 flex flex-col items-center">
-                    <div className="w-14 h-16 rounded-md mb-3" style={{ background: card.color }} />
-                    <div className="text-sm font-medium">{card.name}</div>
-                    <button className="mt-3 text-xs rounded-full px-3 py-1 text-white" style={{ backgroundColor: "var(--primary)" }}>Shop</button>
-                  </div>
                 ))}
               </div>
             </div>
           </div>
-        </section>
+        </aside>
 
-        {/* Example C — PDP snippet */}
-        <section className="rounded-2xl border border-black/5 bg-white p-8 md:p-12">
-          <div className="grid md:grid-cols-2 gap-10 items-start">
-            <div className="rounded-2xl p-6 border border-black/5 bg-[linear-gradient(180deg,#EFE7FA,white)]">
-              <div className="w-56 h-64 mx-auto rounded-xl" style={{ background: "linear-gradient(180deg, var(--primary) 0%, var(--deep) 100%)" }} />
-            </div>
-            <div>
-              <h3 className="text-2xl md:text-3xl font-serif">Blossm Balance</h3>
-              <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third-party tested.</p>
-              <ul className="mt-4 grid gap-2 text-sm">
-                <li>• Evidence-informed doses</li>
-                <li>• Clean label (no artificial colors)</li>
-                <li>• Gentle on daily use</li>
-              </ul>
-              <div className="mt-6 flex items-center gap-3">
-                <div className="text-2xl font-semibold">$39</div>
-                <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "#EFE7FA", color: "var(--primary)" }}>Subscribe & Save 15%</span>
-              </div>
-              <div className="mt-6 flex gap-3">
-                <button className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Add to Cart</button>
-                <button className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Learn More</button>
+        {/* Main column */}
+        <div>
+          {/* Centered logo masthead */}
+          <section className="py-10 md:py-16">
+            <div className="mx-auto max-w-3xl text-center">
+              <div className="inline-block rounded-full px-4 py-1 text-xs tracking-widest border border-black/10 text-black/60">For women 30+</div>
+              <h1 className="mt-4 font-serif text-5xl md:text-7xl lowercase" style={{ color: "var(--primary)" }}>blossm</h1>
+              <p className="mt-3 text-black/70 max-w-xl mx-auto">Science-led daily nutrition that supports hormonal balance, sleep, skin, and mood.</p>
+              <div className="mt-6 flex items-center justify-center gap-3">
+                <a id="shop" href="#product" className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Shop now</a>
+                <a id="catalog" href="#catalog" className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Catalog</a>
+                <a id="contact" href="#contact" className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Contact us</a>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Example D — Editorial / Journal */}
-        <section className="rounded-2xl overflow-hidden border border-black/5">
-          <div className="p-10 text-white" style={{ background: "linear-gradient(120deg, var(--deep) 0%, var(--primary) 60%)" }}>
-            <h3 className="text-3xl md:text-4xl font-serif">The Daily Blossm</h3>
-            <p className="mt-2 max-w-2xl text-white/85">Advice, insights, and stories for women 30+. Rituals that fit real life—no hype.</p>
-            <div className="mt-8 grid md:grid-cols-3 gap-6">
-              {["How to support hormonal health", "A guide to vitamins for skin", "Sleep routines that actually help"].map((t, i) => (
-                <article key={i} className="rounded-2xl bg-white" style={{ color: "var(--text)" }}>
-                  <div className="h-28 rounded-xl mb-4" style={{ background: i === 1 ? "linear-gradient(180deg,#EFE7FA,white)" : "linear-gradient(180deg, var(--accent), var(--primary))" }} />
-                  <div className="p-5">
-                    <h4 className="font-medium">{t}</h4>
-                    <p className="mt-2 text-sm text-black/70">Short, practical tips grounded in gentle science.</p>
-                    <a className="mt-3 inline-block text-sm" style={{ color: "var(--primary)" }} href="#">Read more →</a>
+          {/* Builder controls */}
+          <main className="max-w-6xl mx-auto px-4 py-8 grid gap-8">
+            <section className="rounded-2xl border border-black/5 bg-white p-5">
+              <h2 className="text-lg font-medium mb-3">Theme colors</h2>
+              <div className="grid md:grid-cols-2 gap-3">
+                <ColorField id="c-primary" label="Primary" value={primary} onChange={setPrimary} />
+                <ColorField id="c-accent"  label="Accent"  value={accent}  onChange={setAccent} />
+                <ColorField id="c-deep"    label="Deep"    value={deep}    onChange={setDeep} />
+              </div>
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <input value={presetName} onChange={(e)=>setPresetName(e.target.value)} placeholder="Preset name (e.g. Dusty Lavender)" className="min-w-[220px] px-3 py-2 border rounded-md text-sm" />
+                <button onClick={savePreset} className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "var(--primary)" }}>Save preset</button>
+              </div>
+            </section>
+
+            {/* Live palette */}
+            <section className="rounded-2xl border border-black/5 bg-white p-5">
+              <h2 className="text-lg font-medium mb-4">Live Palette</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                {[
+                  {name:"Primary",hex:primary},
+                  {name:"Primary 600",hex:shades.primary600},
+                  {name:"Primary 700",hex:shades.primary700},
+                  {name:"Accent",hex:accent},
+                  {name:"Accent 300",hex:shades.accent300},
+                  {name:"Deep",hex:deep}
+                ].map((c)=> (
+                  <div key={c.name} className="rounded-xl overflow-hidden border border-black/5">
+                    <div className="h-16" style={{ backgroundColor: c.hex }} />
+                    <div className="p-3 text-xs">
+                      <div className="font-medium">{c.name}</div>
+                      <div className="font-mono text-black/60">{c.hex}</div>
+                    </div>
                   </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
+                ))}
+              </div>
+            </section>
 
-        {/* Gradient recipes (live) */}
-        <section className="rounded-2xl border border-black/5 bg-white p-6">
-          <h3 className="text-lg font-medium mb-3">Gradient recipes (live)</h3>
-          <pre className="whitespace-pre-wrap text-xs bg-black/5 p-4 rounded-xl">{`/* Dark hero */
+            {/* Dark hero example */}
+            <section className="rounded-2xl overflow-hidden border border-black/5">
+              <div className="p-10 md:p-16 text-white relative" style={{
+                backgroundImage:
+                  `radial-gradient(1200px 600px at 20% 0%, var(--accent) 0%, rgba(0,0,0,0) 40%), radial-gradient(900px 600px at 100% 50%, var(--primary) 0%, var(--deep) 70%)`,
+                backgroundColor: "var(--deep)",
+              }}>
+                <div className="max-w-3xl">
+                  <p className="uppercase tracking-[0.25em] text-white/70 text-xs mb-4">For women 30+</p>
+                  <h3 className="text-4xl md:text-6xl leading-tight font-serif">Feel good in your own rhythm</h3>
+                  <p className="mt-4 text-white/85 max-w-xl">Science-led daily nutrition that supports hormonal balance, sleep, skin, and mood.</p>
+                  <div className="mt-8 flex gap-3">
+                    <a href="#product" className="rounded-full px-6 py-3 text-sm font-medium bg-white" style={{ color: "var(--deep)" }}>Shop Balance</a>
+                    <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border border-white/25 hover:bg-white/10">Learn more</a>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Light grid example */}
+            <section className="rounded-2xl border border-black/5 bg-white p-10 md:p-14">
+              <div className="grid md:grid-cols-2 items-center gap-10">
+                <div>
+                  <h2 className="text-3xl md:text-5xl font-serif" style={{ color: "var(--text)" }}>Daily support for the next chapter</h2>
+                  <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence‑informed formulas made for real life. Clean label, third‑party tested.</p>
+                  <div className="mt-8 flex gap-3">
+                    <a href="#product" className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Shop Now</a>
+                    <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Take quiz</a>
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute -inset-6 rounded-3xl opacity-70" style={{ background: `radial-gradient(600px 300px at 60% 40%, #EFE7FA 0%, transparent 60%), radial-gradient(400px 280px at 20% 80%, var(--accent) 0%, transparent 60%)` }} />
+                  <div className="relative rounded-2xl border border-black/5 bg-white p-6 grid grid-cols-4 gap-4">
+                    {[
+                      { name: "Balance", color: "var(--primary)" },
+                      { name: "Glow",    color: "var(--accent)" },
+                      { name: "Calm",    color: "var(--deep)" },
+                      { name: "Restore", color: "#8EA69C" },
+                    ].map((card) => (
+                      <div key={card.name} className="rounded-xl border border-black/5 p-4 flex flex-col items-center">
+                        <div className="w-14 h-16 rounded-md mb-3" style={{ background: card.color }} />
+                        <div className="text-sm font-medium">{card.name}</div>
+                        <button className="mt-3 text-xs rounded-full px-3 py-1 text-white" style={{ backgroundColor: "var(--primary)" }}>Shop</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* NEW: Product section (PDP-style) */}
+            <section id="product" className="rounded-2xl border border-black/5 bg-white p-6 md:p-10">
+              <div className="grid md:grid-cols-2 gap-10 items-start">
+                {/* Product image */}
+                <div className="relative">
+                  <div className="absolute -inset-6 rounded-3xl opacity-70" style={{ background: `radial-gradient(600px 300px at 40% 40%, var(--accent) 0%, transparent 60%)` }} />
+                  <div className="relative rounded-2xl p-8 border border-black/5 bg-[linear-gradient(180deg,#FFF,rgba(255,255,255,0.9))] grid place-items-center">
+                    {/* clean silhouette as placeholder */}
+                    <div className="w-52 h-64 rounded-xl" style={{ background: "linear-gradient(180deg, var(--primary) 0%, var(--deep) 100%)" }} />
+                    <div className="w-56 h-8 -mt-2 rounded-t-xl" style={{ backgroundColor: "var(--deep)" }} />
+                  </div>
+                </div>
+
+                {/* Product details */}
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-black/60">Menopause support</div>
+                  <h3 className="mt-2 text-3xl md:text-4xl font-serif">Blossm Balance™</h3>
+                  <p className="mt-3 text-black/70">A gentle daily formula designed to support hot flashes, mood steadiness, and restful sleep during perimenopause and menopause. Vegan. Third‑party tested.</p>
+                  <ul className="mt-4 grid gap-2 text-sm">
+                    <li>• Evidence‑informed ingredients</li>
+                    <li>• No artificial colors or fillers</li>
+                    <li>• 60 capsules · 30‑day supply</li>
+                  </ul>
+                  <div className="mt-6 flex items-center gap-3">
+                    <div className="text-2xl font-semibold">$39</div>
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "#EFE7FA", color: "var(--primary)" }}>Subscribe & Save 15%</span>
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-3">
+                    <label className="text-sm" htmlFor="qty">Qty</label>
+                    <input id="qty" defaultValue={1} min={1} type="number" className="w-16 px-2 py-2 border rounded-md" />
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Add to Cart</button>
+                    <button className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Buy Now</button>
+                  </div>
+
+                  <div className="mt-6 grid sm:grid-cols-3 gap-3 text-xs">
+                    <div className="rounded-xl border border-black/10 p-3">✓ Free shipping over $50</div>
+                    <div className="rounded-xl border border-black/10 p-3">✓ 30‑day happiness guarantee</div>
+                    <div className="rounded-xl border border-black/10 p-3">✓ Third‑party tested</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Journal teaser */}
+            <section id="journal" className="rounded-2xl overflow-hidden border border-black/5">
+              <div className="p-10 text-white" style={{ background: "linear-gradient(120deg, var(--deep) 0%, var(--primary) 60%)" }}>
+                <h3 className="text-3xl md:text-4xl font-serif">The Daily Blossm</h3>
+                <p className="mt-2 max-w-2xl text-white/85">Advice, insights, and stories for women 30+. Rituals that fit real life—no hype.</p>
+                <div className="mt-8 grid md:grid-cols-3 gap-6">
+                  {["How to support hormonal health", "A guide to vitamins for skin", "Sleep routines that actually help"].map((t, i) => (
+                    <article key={i} className="rounded-2xl bg-white" style={{ color: "var(--text)" }}>
+                      <div className="h-28 rounded-xl mb-4" style={{ background: i === 1 ? "linear-gradient(180deg,#EFE7FA,white)" : "linear-gradient(180deg, var(--accent), var(--primary))" }} />
+                      <div className="p-5">
+                        <h4 className="font-medium">{t}</h4>
+                        <p className="mt-2 text-sm text-black/70">Short, practical tips grounded in gentle science.</p>
+                        <a className="mt-3 inline-block text-sm" style={{ color: "var(--primary)" }} href="#">Read more →</a>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Gradient recipes (live) */}
+            <section className="rounded-2xl border border-black/5 bg-white p-6">
+              <h3 className="text-lg font-medium mb-3">Gradient recipes (live)</h3>
+              <pre className="whitespace-pre-wrap text-xs bg-black/5 p-4 rounded-xl">{`/* Dark hero */
 background: radial-gradient(1200px 600px at 20% 0%, ${accent} 0%, rgba(0,0,0,.0) 40%),
             radial-gradient(900px 600px at 100% 50%, ${primary} 0%, ${deep} 70%);
 
@@ -433,10 +422,12 @@ background: radial-gradient(600px 300px at 60% 40%, #EFE7FA 0%, transparent 60%)
 
 /* Journal header */
 background: linear-gradient(120deg, ${deep} 0%, ${primary} 60%);`}</pre>
-        </section>
-      </main>
+            </section>
+          </main>
 
-      <footer className="py-10 text-center text-xs text-black/60">© Blossm Nutrition</footer>
+          <footer className="py-10 text-center text-xs text-black/60">© Blossm Nutrition</footer>
+        </div>
+      </div>
     </div>
   );
 }
