@@ -322,7 +322,7 @@ export default function BlossmPurpleShowcaseInteractive() {
               <div className="w-56 h-64 mx-auto rounded-xl" style={{ background: "linear-gradient(180deg, var(--primary) 0%, var(--deep) 100%)" }} />
             </div>
             <div>
-              <h3 className="text-2xl md:text-3xl font-serif">Blossm Balance</himo>
+              <h3 className="text-2xl md:text-3xl font-serif">Blossm Balance</h3>
               <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third‑party tested.</p>
               <ul className="mt-4 grid gap-2 text-sm">
                 <li>• Evidence‑informed doses</li>
