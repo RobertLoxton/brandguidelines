@@ -64,29 +64,13 @@ function adjust(hex, { dl = 0, ds = 0 }) {
 }
 const isValidHex = (v) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(v);
 
-/* ---------- click-outside helper ---------- */
-function useOnClickOutside(ref, handler) {
-  useEffect(() => {
-    const listener = (e) => {
-      if (!ref.current || ref.current.contains(e.target)) return;
-      handler(e);
-    };
-    document.addEventListener("mousedown", listener);
-    document.addEventListener("touchstart", listener, { passive: true });
-    return () => {
-      document.removeEventListener("mousedown", listener);
-      document.removeEventListener("touchstart", listener);
-    };
-  }, [ref, handler]);
-}
-
 /* ---------- Component ---------- */
 export default function BlossmPurpleShowcaseInteractive() {
   const builtInPresets = [
     { name: "Mauve", primary: "#9B6BA3", accent: "#C27AA3", deep: "#3B164B" },
     { name: "Lilac", primary: "#A679E8", accent: "#EFE7FA", deep: "#3B164B" },
     { name: "Grape", primary: "#6E2E7A", accent: "#A679E8", deep: "#3B164B" },
-    { name: "Rose",  primary: "#B86B82", accent: "#F6DCE6", deep: "#3B164B" },
+    { name: "Rose",  primary: "#B86B82", accent: "#F6DCE6", deep: "#3B164B" }
   ];
 
   const [primary, setPrimary] = useState("#9B6BA3");
@@ -122,7 +106,7 @@ export default function BlossmPurpleShowcaseInteractive() {
     primary700: adjust(primary, { dl: -16 }),
     primary300: adjust(primary, { dl: +8 }),
     accent300:  adjust(accent,  { dl: +12 }),
-    accent700:  adjust(accent,  { dl: -12 }),
+    accent700:  adjust(accent,  { dl: -12 })
   }), [primary, accent]);
 
   const cssVars = {
@@ -135,7 +119,7 @@ export default function BlossmPurpleShowcaseInteractive() {
     "--accent-700": shades.accent700,
     "--deep": deep,
     "--bg": neutralBg,
-    "--text": text,
+    "--text": text
   };
 
   /* ---- Custom, drag-friendly color field ---- */
@@ -143,9 +127,33 @@ export default function BlossmPurpleShowcaseInteractive() {
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState(value);
     const popRef = useRef(null);
-    useOnClickOutside(popRef, () => setOpen(false));
+    const anchorRef = useRef(null);
 
     useEffect(() => { setDraft(value); }, [value]);
+
+    // Close ONLY on click/tap completely outside (capture phase, robust)
+    useEffect(() => {
+      const handlePointerDown = (e) => {
+        const pop = popRef.current;
+        const anchor = anchorRef.current;
+        if (!pop || !anchor) return;
+        const t = e.target;
+        const clickedInsidePopover = pop.contains(t);
+        const clickedAnchor = anchor.contains(t);
+        if (!clickedInsidePopover && !clickedAnchor) {
+          setOpen(false);
+        }
+      };
+      document.addEventListener("pointerdown", handlePointerDown, true); // capture
+      return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+    }, []);
+
+    // Escape to close
+    useEffect(() => {
+      const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+      document.addEventListener("keydown", onKey);
+      return () => document.removeEventListener("keydown", onKey);
+    }, []);
 
     const onHexInput = (v) => {
       let val = v.startsWith("#") ? v : "#" + v;
@@ -158,11 +166,12 @@ export default function BlossmPurpleShowcaseInteractive() {
       <div className="relative flex items-center gap-3 text-sm">
         <label htmlFor={id} className="w-20 text-black/70">{label}</label>
 
-        {/* Swatch opens persistent picker */}
+        {/* Swatch opens picker (no toggle close) */}
         <button
+          ref={anchorRef}
           type="button"
           aria-label={`${label} color`}
-          onClick={() => setOpen(o => !o)}
+          onClick={() => setOpen(true)}
           className="w-10 h-10 rounded-md border border-black/10"
           style={{ backgroundColor: value }}
         />
@@ -174,7 +183,7 @@ export default function BlossmPurpleShowcaseInteractive() {
           className="flex-1 px-2 py-2 border rounded-md text-sm font-mono"
         />
 
-        {/* Popover with drag-friendly picker; stays open until outside click or Done */}
+        {/* Popover with drag-friendly picker; stays open until outside click / Esc / Done */}
         {open && (
           <div
             ref={popRef}
@@ -319,7 +328,7 @@ export default function BlossmPurpleShowcaseInteractive() {
             style={{
               backgroundImage:
                 `radial-gradient(1200px 600px at 20% 0%, var(--accent) 0%, rgba(0,0,0,0) 40%), radial-gradient(900px 600px at 100% 50%, var(--primary) 0%, var(--deep) 70%)`,
-              backgroundColor: "var(--deep)",
+              backgroundColor: "var(--deep)"
             }}
           >
             <div className="max-w-3xl">
@@ -352,7 +361,7 @@ export default function BlossmPurpleShowcaseInteractive() {
                   { name: "Balance", color: "var(--primary)" },
                   { name: "Glow",    color: "var(--accent)" },
                   { name: "Calm",    color: "var(--deep)" },
-                  { name: "Restore", color: "#8EA69C" },
+                  { name: "Restore", color: "#8EA69C" }
                 ].map((card) => (
                   <div key={card.name} className="rounded-xl border border-black/5 p-4 flex flex-col items-center">
                     <div className="w-14 h-16 rounded-md mb-3" style={{ background: card.color }} />
