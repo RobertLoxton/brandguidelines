@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { HexColorPicker } from "react-colorful";
+import "react-colorful/dist/index.css";
 
-// ---- Color utils ----
+/* ---------- Color utils ---------- */
 function hexToRgb(hex) {
   const n = hex.replace("#", "");
   const bigint = parseInt(n.length === 3 ? n.split("").map((c)=>c+c).join("") : n, 16);
@@ -63,7 +65,23 @@ function adjust(hex, { dl = 0, ds = 0 }) {
 }
 const isValidHex = (v) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(v);
 
-// ---- Component ----
+/* ---------- click-outside helper ---------- */
+function useOnClickOutside(ref, handler) {
+  useEffect(() => {
+    const listener = (e) => {
+      if (!ref.current || ref.current.contains(e.target)) return;
+      handler(e);
+    };
+    document.addEventListener("mousedown", listener);
+    document.addEventListener("touchstart", listener, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", listener);
+      document.removeEventListener("touchstart", listener);
+    };
+  }, [ref, handler]);
+}
+
+/* ---------- Component ---------- */
 export default function BlossmPurpleShowcaseInteractive() {
   const builtInPresets = [
     { name: "Mauve", primary: "#9B6BA3", accent: "#C27AA3", deep: "#3B164B" },
@@ -99,7 +117,7 @@ export default function BlossmPurpleShowcaseInteractive() {
     try { localStorage.setItem("blossm.last", JSON.stringify({ primary, accent, deep })); } catch {}
   }, [primary, accent, deep]);
 
-  // Derived shades for gradients & buttons
+  // Derived shades
   const shades = useMemo(() => ({
     primary600: adjust(primary, { dl: -8 }),
     primary700: adjust(primary, { dl: -16 }),
@@ -121,41 +139,72 @@ export default function BlossmPurpleShowcaseInteractive() {
     "--text": text,
   };
 
-  // Uncontrolled color input that won't close while dragging
-  function Field({ id, label, value, onChange }) {
-    const [hex, setHex] = useState(value);
-    const colorRef = useRef(null);
+  /* ---- Custom, drag-friendly color field ---- */
+  function ColorField({ id, label, value, onChange }) {
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState(value);
+    const popRef = useRef(null);
+    useOnClickOutside(popRef, () => setOpen(false));
 
-    useEffect(() => {
-      setHex(value);
-      if (colorRef.current && colorRef.current.value !== value) {
-        colorRef.current.value = value; // keep swatch in sync when external changes happen
-      }
-    }, [value]);
+    useEffect(() => { setDraft(value); }, [value]);
 
-    const onHex = (v) => {
+    const onHexInput = (v) => {
       let val = v.startsWith("#") ? v : "#" + v;
       val = val.toUpperCase();
-      setHex(val);
+      setDraft(val);
       if (isValidHex(val)) onChange(val);
     };
 
     return (
-      <div className="flex items-center gap-3 text-sm">
+      <div className="relative flex items-center gap-3 text-sm">
         <label htmlFor={id} className="w-20 text-black/70">{label}</label>
-        <input
-          id={id}
-          ref={colorRef}
-          type="color"
-          defaultValue={value}
-          onChange={(e)=>onChange(e.target.value)}
+
+        {/* Swatch opens persistent picker */}
+        <button
+          type="button"
+          aria-label={`${label} color`}
+          onClick={() => setOpen(o => !o)}
           className="w-10 h-10 rounded-md border border-black/10"
+          style={{ backgroundColor: value }}
         />
+
+        {/* Hex input */}
         <input
-          value={hex}
-          onChange={(e)=>onHex(e.target.value)}
+          value={draft}
+          onChange={(e)=>onHexInput(e.target.value)}
           className="flex-1 px-2 py-2 border rounded-md text-sm font-mono"
         />
+
+        {/* Popover with drag-friendly picker; stays open until outside click or Done */}
+        {open && (
+          <div
+            ref={popRef}
+            className="absolute z-50 top-12 left-20 bg-white border border-black/10 rounded-xl shadow-xl p-3 w-[260px]"
+          >
+            <HexColorPicker
+              color={draft}
+              onChange={(c) => {
+                const v = c.toUpperCase();
+                setDraft(v);
+                onChange(v); // live update while dragging
+              }}
+            />
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                value={draft}
+                onChange={(e)=>onHexInput(e.target.value)}
+                className="flex-1 px-2 py-2 border rounded-md text-sm font-mono"
+              />
+              <button
+                type="button"
+                onClick={()=>setOpen(false)}
+                className="px-3 py-2 text-xs rounded-md border border-black/10 hover:bg-black/5"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -202,9 +251,9 @@ export default function BlossmPurpleShowcaseInteractive() {
         <section className="rounded-2xl border border-black/5 bg-white p-5">
           <h2 className="text-lg font-medium mb-3">Theme colors</h2>
           <div className="grid md:grid-cols-2 gap-3">
-            <Field id="c-primary" label="Primary" value={primary} onChange={setPrimary} />
-            <Field id="c-accent" label="Accent" value={accent} onChange={setAccent} />
-            <Field id="c-deep"   label="Deep"   value={deep}   onChange={setDeep} />
+            <ColorField id="c-primary" label="Primary" value={primary} onChange={setPrimary} />
+            <ColorField id="c-accent"  label="Accent"  value={accent}  onChange={setAccent} />
+            <ColorField id="c-deep"    label="Deep"    value={deep}    onChange={setDeep} />
           </div>
 
           {/* Save current as preset */}
@@ -215,7 +264,9 @@ export default function BlossmPurpleShowcaseInteractive() {
               placeholder="Preset name (e.g. Dusty Lavender)"
               className="min-w-[220px] px-3 py-2 border rounded-md text-sm"
             />
-            <button onClick={savePreset} className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "var(--primary)" }}>Save preset</button>
+            <button onClick={savePreset} className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "var(--primary)" }}>
+              Save preset
+            </button>
           </div>
 
           {/* Presets list */}
@@ -262,7 +313,7 @@ export default function BlossmPurpleShowcaseInteractive() {
           </div>
         </section>
 
-        {/* Example A — Dark Hero (full-bleed gradient) */}
+        {/* Example A — Dark Hero */}
         <section className="rounded-2xl overflow-hidden border border-black/5">
           <div
             className="p-10 md:p-16 text-white relative"
@@ -284,12 +335,12 @@ export default function BlossmPurpleShowcaseInteractive() {
           </div>
         </section>
 
-        {/* Example B — Light Hero with accent */}
+        {/* Example B — Light Hero */}
         <section className="rounded-2xl border border-black/5 bg-white p-10 md:p-14">
           <div className="grid md:grid-cols-2 items-center gap-10">
             <div>
               <h2 className="text-3xl md:text-5xl font-serif" style={{ color: "var(--text)" }}>Daily support for the next chapter</h2>
-              <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence‑informed formulas made for real life. Clean label, third‑party tested.</p>
+              <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence-informed formulas made for real life. Clean label, third-party tested.</p>
               <div className="mt-8 flex gap-3">
                 <a href="#" className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Shop Now</a>
                 <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Take quiz</a>
@@ -323,9 +374,9 @@ export default function BlossmPurpleShowcaseInteractive() {
             </div>
             <div>
               <h3 className="text-2xl md:text-3xl font-serif">Blossm Balance</h3>
-              <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third‑party tested.</p>
+              <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third-party tested.</p>
               <ul className="mt-4 grid gap-2 text-sm">
-                <li>• Evidence‑informed doses</li>
+                <li>• Evidence-informed doses</li>
                 <li>• Clean label (no artificial colors)</li>
                 <li>• Gentle on daily use</li>
               </ul>
