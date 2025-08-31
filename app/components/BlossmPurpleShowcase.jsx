@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 
-// Helper functions for color manipulation
+// ---- Color utils ----
 function hexToRgb(hex) {
   const n = hex.replace("#", "");
   const bigint = parseInt(n.length === 3 ? n.split("").map((c)=>c+c).join("") : n, 16);
@@ -18,9 +18,8 @@ function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   let h, s, l = (max + min) / 2;
-  if (max === min) {
-    h = s = 0; // achromatic
-  } else {
+  if (max === min) { h = s = 0; }
+  else {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
@@ -35,17 +34,15 @@ function rgbToHsl(r, g, b) {
 function hslToRgb(h, s, l) {
   h /= 360; s /= 100; l /= 100;
   const hue2rgb = (p, q, t) => {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
+    if (t < 0) t += 1; if (t > 1) t -= 1;
     if (t < 1/6) return p + (q - p) * 6 * t;
     if (t < 1/2) return q;
     if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
     return p;
   };
   let r, g, b;
-  if (s === 0) {
-    r = g = b = l; // achromatic
-  } else {
+  if (s === 0) { r = g = b = l; }
+  else {
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     const p = 2 * l - q;
     r = hue2rgb(p, q, h + 1/3);
@@ -64,28 +61,51 @@ function adjust(hex, { dl = 0, ds = 0 }) {
   );
   return rgbToHex(rr, rg, rb);
 }
+const isValidHex = (v) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(v);
 
+// ---- Component ----
 export default function BlossmPurpleShowcaseInteractive() {
-  const presets = [
-    { name: "Mauve", primary: "#9B6BA3", accent: "#C27AA3" },
-    { name: "Lilac", primary: "#A679E8", accent: "#EFE7FA" },
-    { name: "Grape", primary: "#6E2E7A", accent: "#A679E8" },
-    { name: "Rose", primary: "#B86B82", accent: "#F6DCE6" },
+  const builtInPresets = [
+    { name: "Mauve", primary: "#9B6BA3", accent: "#C27AA3", deep: "#3B164B" },
+    { name: "Lilac", primary: "#A679E8", accent: "#EFE7FA", deep: "#3B164B" },
+    { name: "Grape", primary: "#6E2E7A", accent: "#A679E8", deep: "#3B164B" },
+    { name: "Rose",  primary: "#B86B82", accent: "#F6DCE6", deep: "#3B164B" },
   ];
 
   const [primary, setPrimary] = useState("#9B6BA3");
-  const [accent, setAccent] = useState("#C27AA3");
-  const [deep, setDeep] = useState("#3B164B");
+  const [accent, setAccent]   = useState("#C27AA3");
+  const [deep, setDeep]       = useState("#3B164B");
   const neutralBg = "#F6F1EC";
   const text = "#1F1F23";
+
+  const [customPresets, setCustomPresets] = useState([]);
+  const [presetName, setPresetName] = useState("");
+
+  // Load/save from localStorage
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("blossm.presets") || "[]");
+      if (Array.isArray(saved)) setCustomPresets(saved);
+      const last = JSON.parse(localStorage.getItem("blossm.last") || "null");
+      if (last && last.primary && last.accent && last.deep) {
+        setPrimary(last.primary); setAccent(last.accent); setDeep(last.deep);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem("blossm.presets", JSON.stringify(customPresets)); } catch {}
+  }, [customPresets]);
+  useEffect(() => {
+    try { localStorage.setItem("blossm.last", JSON.stringify({ primary, accent, deep })); } catch {}
+  }, [primary, accent, deep]);
 
   // Derived shades for gradients & buttons
   const shades = useMemo(() => ({
     primary600: adjust(primary, { dl: -8 }),
     primary700: adjust(primary, { dl: -16 }),
     primary300: adjust(primary, { dl: +8 }),
-    accent300: adjust(accent, { dl: +12 }),
-    accent700: adjust(accent, { dl: -12 }),
+    accent300:  adjust(accent,  { dl: +12 }),
+    accent700:  adjust(accent,  { dl: -12 }),
   }), [primary, accent]);
 
   const cssVars = {
@@ -101,13 +121,62 @@ export default function BlossmPurpleShowcaseInteractive() {
     "--text": text,
   };
 
-  const Field = ({ label, value, onChange }) => (
-    <label className="flex items-center gap-3 text-sm">
-      <span className="w-20 text-black/70">{label}</span>
-      <input type="color" value={value} onChange={(e)=>onChange(e.target.value)} className="w-10 h-10 rounded-md border border-black/10" />
-      <input value={value} onChange={(e)=>onChange(e.target.value)} className="flex-1 px-2 py-2 border rounded-md text-sm font-mono" />
-    </label>
-  );
+  // Uncontrolled color input that won't close while dragging
+  function Field({ id, label, value, onChange }) {
+    const [hex, setHex] = useState(value);
+    const colorRef = useRef(null);
+
+    useEffect(() => {
+      setHex(value);
+      if (colorRef.current && colorRef.current.value !== value) {
+        colorRef.current.value = value; // keep swatch in sync when external changes happen
+      }
+    }, [value]);
+
+    const onHex = (v) => {
+      let val = v.startsWith("#") ? v : "#" + v;
+      val = val.toUpperCase();
+      setHex(val);
+      if (isValidHex(val)) onChange(val);
+    };
+
+    return (
+      <div className="flex items-center gap-3 text-sm">
+        <label htmlFor={id} className="w-20 text-black/70">{label}</label>
+        <input
+          id={id}
+          ref={colorRef}
+          type="color"
+          defaultValue={value}
+          onChange={(e)=>onChange(e.target.value)}
+          className="w-10 h-10 rounded-md border border-black/10"
+        />
+        <input
+          value={hex}
+          onChange={(e)=>onHex(e.target.value)}
+          className="flex-1 px-2 py-2 border rounded-md text-sm font-mono"
+        />
+      </div>
+    );
+  }
+
+  const applyPreset = (p) => {
+    setPrimary(p.primary); setAccent(p.accent); setDeep(p.deep || "#3B164B");
+  };
+  const savePreset = () => {
+    const name = presetName.trim();
+    if (!name) return alert("Give your preset a name.");
+    if (!isValidHex(primary) || !isValidHex(accent) || !isValidHex(deep)) {
+      return alert("Please use valid HEX colors like #9B6BA3 or #ABC.");
+    }
+    const next = { name, primary, accent, deep };
+    setCustomPresets((prev) => {
+      const filtered = prev.filter((x) => x.name.toLowerCase() !== name.toLowerCase());
+      return [...filtered, next];
+    });
+    setPresetName("");
+  };
+  const removePreset = (name) => setCustomPresets((p) => p.filter((x) => x.name !== name));
 
   return (
     <div className="min-h-screen w-full" style={{ backgroundColor: "var(--bg)", color: "var(--text)", ...cssVars }}>
@@ -133,23 +202,38 @@ export default function BlossmPurpleShowcaseInteractive() {
         <section className="rounded-2xl border border-black/5 bg-white p-5">
           <h2 className="text-lg font-medium mb-3">Theme colors</h2>
           <div className="grid md:grid-cols-2 gap-3">
-            <Field label="Primary" value={primary} onChange={setPrimary} />
-            <Field label="Accent" value={accent} onChange={setAccent} />
-            <Field label="Deep" value={deep} onChange={setDeep} />
+            <Field id="c-primary" label="Primary" value={primary} onChange={setPrimary} />
+            <Field id="c-accent" label="Accent" value={accent} onChange={setAccent} />
+            <Field id="c-deep"   label="Deep"   value={deep}   onChange={setDeep} />
           </div>
-          <div className="mt-4">
+
+          {/* Save current as preset */}
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <input
+              value={presetName}
+              onChange={(e)=>setPresetName(e.target.value)}
+              placeholder="Preset name (e.g. Dusty Lavender)"
+              className="min-w-[220px] px-3 py-2 border rounded-md text-sm"
+            />
+            <button onClick={savePreset} className="rounded-full px-4 py-2 text-sm text-white" style={{ backgroundColor: "var(--primary)" }}>Save preset</button>
+          </div>
+
+          {/* Presets list */}
+          <div className="mt-5">
             <div className="text-sm mb-2 text-black/70">Presets</div>
             <div className="flex flex-wrap gap-2">
-              {presets.map((p) => (
-                <button
-                  key={p.name}
-                  onClick={()=>{ setPrimary(p.primary); setAccent(p.accent); }}
-                  className="flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 hover:bg-black/5"
-                >
-                  <span className="w-4 h-4 rounded" style={{ backgroundColor: p.primary }} />
-                  <span className="w-4 h-4 rounded" style={{ backgroundColor: p.accent }} />
-                  <span className="text-xs">{p.name}</span>
-                </button>
+              {[...builtInPresets, ...customPresets].map((p) => (
+                <div key={p.name} className="flex items-center gap-2 rounded-full border border-black/10 px-3 py-2 bg-white">
+                  <button onClick={()=>applyPreset(p)} className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded" style={{ backgroundColor: p.primary }} />
+                    <span className="w-4 h-4 rounded" style={{ backgroundColor: p.accent }} />
+                    <span className="w-4 h-4 rounded" style={{ backgroundColor: p.deep || "#3B164B" }} />
+                    <span className="text-xs">{p.name}</span>
+                  </button>
+                  {customPresets.some(cp => cp.name === p.name) && (
+                    <button aria-label="Remove preset" onClick={()=>removePreset(p.name)} className="text-xs px-2 py-0.5 rounded hover:bg-black/5">✕</button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -200,29 +284,24 @@ export default function BlossmPurpleShowcaseInteractive() {
           </div>
         </section>
 
-        {/* Example B — Light Hero with accent purple */}
+        {/* Example B — Light Hero with accent */}
         <section className="rounded-2xl border border-black/5 bg-white p-10 md:p-14">
           <div className="grid md:grid-cols-2 items-center gap-10">
             <div>
               <h2 className="text-3xl md:text-5xl font-serif" style={{ color: "var(--text)" }}>Daily support for the next chapter</h2>
-              <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence-informed formulas made for real life. Clean label, third-party tested.</p>
+              <p className="mt-4 text-black/70 max-w-xl">Gentle, evidence‑informed formulas made for real life. Clean label, third‑party tested.</p>
               <div className="mt-8 flex gap-3">
                 <a href="#" className="rounded-full px-6 py-3 text-sm font-medium text-white" style={{ backgroundColor: "var(--primary)" }}>Shop Now</a>
                 <a href="#" className="rounded-full px-6 py-3 text-sm font-medium border" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>Take quiz</a>
               </div>
             </div>
             <div className="relative">
-              <div
-                className="absolute -inset-6 rounded-3xl opacity-70"
-                style={{
-                  background: `radial-gradient(600px 300px at 60% 40%, #EFE7FA 0%, transparent 60%), radial-gradient(400px 280px at 20% 80%, var(--accent) 0%, transparent 60%)`
-                }}
-              />
+              <div className="absolute -inset-6 rounded-3xl opacity-70" style={{ background: `radial-gradient(600px 300px at 60% 40%, #EFE7FA 0%, transparent 60%), radial-gradient(400px 280px at 20% 80%, var(--accent) 0%, transparent 60%)` }} />
               <div className="relative rounded-2xl border border-black/5 bg-white p-6 grid grid-cols-4 gap-4">
                 {[
                   { name: "Balance", color: "var(--primary)" },
-                  { name: "Glow", color: "var(--accent)" },
-                  { name: "Calm", color: "var(--deep)" },
+                  { name: "Glow",    color: "var(--accent)" },
+                  { name: "Calm",    color: "var(--deep)" },
                   { name: "Restore", color: "#8EA69C" },
                 ].map((card) => (
                   <div key={card.name} className="rounded-xl border border-black/5 p-4 flex flex-col items-center">
@@ -243,10 +322,10 @@ export default function BlossmPurpleShowcaseInteractive() {
               <div className="w-56 h-64 mx-auto rounded-xl" style={{ background: "linear-gradient(180deg, var(--primary) 0%, var(--deep) 100%)" }} />
             </div>
             <div>
-              <h3 className="text-2xl md:text-3xl font-serif">Blossm Balance</h3>
-              <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third-party tested.</p>
+              <h3 className="text-2xl md:text-3xl font-serif">Blossm Balance</himo>
+              <p className="mt-2 text-sm text-black/70">Supports hormonal balance, sleep quality, and calm mood. 60 capsules. Vegan. Third‑party tested.</p>
               <ul className="mt-4 grid gap-2 text-sm">
-                <li>• Evidence-informed doses</li>
+                <li>• Evidence‑informed doses</li>
                 <li>• Clean label (no artificial colors)</li>
                 <li>• Gentle on daily use</li>
               </ul>
