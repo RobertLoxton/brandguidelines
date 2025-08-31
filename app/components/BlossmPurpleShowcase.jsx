@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { HexColorPicker } from "react-colorful";
-import "react-colorful/dist/index.css";
 
 /* ---------- Color utils ---------- */
 function hexToRgb(hex) {
