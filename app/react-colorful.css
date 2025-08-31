@@ -1,0 +1,36 @@
+/* app/react-colorful.css */
+.react-colorful {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  font-family: inherit;
+}
+.react-colorful__saturation {
+  position: relative;
+  height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.react-colorful__saturation-pointer {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.1);
+  transform: translate(-9px, -9px);
+}
+.react-colorful__hue {
+  height: 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.react-colorful__hue-pointer {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.1);
+  transform: translate(-9px, -2px);
+}
